@@ -162,7 +162,12 @@ class MarshalStats
     end
     def construct_symbol
       @h.count! :_symbol
-      count_obj! super
+      obj = count_obj! super
+      @h.add! "#{obj.__klass_id}#to_s.size", obj.to_s.size
+      #if obj.to_s.size > 40
+      #  $stdout.puts "   # **** large Symbol: #{obj}"
+      #end
+      obj
     end
     def construct_string
       obj = count_obj! super
