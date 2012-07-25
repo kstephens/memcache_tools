@@ -13,7 +13,13 @@ class Histogram
   def initialize
     @h = Hash.new do | h, k |
       h[k] = Hash.new do | h, k |
-        h[k] = 0
+        h[k] =
+          case k
+          when :values
+            [ ]
+          else
+            0
+          end
       end
     end
   end
@@ -35,6 +41,7 @@ class Histogram
     if ! (x = h[:max]) or value > x
       h[:max] = value
     end
+    h[:values] << value
     c = h[:count] += 1
     t = h[:total] += value
     h[:avg] += t.to_f / c
@@ -57,6 +64,15 @@ class Histogram
       if h.keys.size == 1 and h.keys[0] == :count
         o.puts "    '#{k}': #{h[:count]}"
         next
+      end
+      if values = h.delete(:values) and ! values.empty?
+        n = values.size
+        values.sort!
+        h[:median] = values[n / 2]
+        avg = h[:avg]
+        values.map!{|v| v = (v - avg); v * v}
+        values.sort!
+        h[:stddev] = Math.sqrt(values.inject(0){|s, e| s + e}.to_f / n)
       end
       o.puts "    #{k.inspect}:"
       hks = h.keys.sort_by{|e| e.to_s}
