@@ -41,10 +41,10 @@ class Histogram
     ks.each do | k |
       o.puts "    #{k}:"
       h = @h[k]
-      ks = h.keys.sort_by{|a, b| a.to_s <=> b.to_s }
-      ks.each do | k |
-        v = h[k]
-        o.puts "       #{k}: #{v}"
+      hks = h.keys.sort_by{|a, b| a.to_s <=> b.to_s }
+      hks.each do | hk |
+        v = h[hk]
+        o.puts "       #{hk}: #{v}"
       end
     end
     self
