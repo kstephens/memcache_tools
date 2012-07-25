@@ -100,6 +100,8 @@ class MemcacheAnalysis
         # ch.chain = @ch
         ms.ch = ch
         ms.parse_top_level!
+      rescue Interrupt, SystemExit
+        raise
       rescue Exception => exc
         cmd[:error] = [ exc.class.name, exc.inspect, exc.backtrace ]
       end
