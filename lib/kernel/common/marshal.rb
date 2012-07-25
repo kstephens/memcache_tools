@@ -335,25 +335,11 @@ module Marshal
             when 100  # ?d
               construct_data
             when 64   # ?@
-              num = construct_integer
-              obj = @objects[num]
-
-              raise ArgumentError, "dump format error (unlinked)" unless obj
-
-              return obj
+              return construct_object_ref
             when 59   # ?;
-              num = construct_integer
-              sym = @symbols[num]
-
-              raise ArgumentError, "bad symbol" unless sym
-
-              return sym
+              return construct_symbol_ref # sym
             when 101  # ?e
-              @modules ||= []
-
-              name = get_symbol
-              @modules << const_lookup(name, Module)
-
+              construct_extended_object
               obj = construct nil, false
 
               extend_object obj
@@ -382,6 +368,33 @@ module Marshal
 
       @stream.tainted? ? obj.taint : obj
     end
+
+    def construct_extended_object
+              @modules ||= []
+
+              name = get_symbol
+              @modules << const_lookup(name, Module)
+
+    end
+
+    def construct_object_ref
+              num = construct_integer
+              obj = @objects[num]
+
+              raise ArgumentError, "dump format error (unlinked)" unless obj
+
+              return obj
+    end
+
+    def construct_symbol_ref
+              num = construct_integer
+              sym = @symbols[num]
+
+              raise ArgumentError, "bad symbol" unless sym
+
+              return sym
+    end
+
 
     def construct_class
       obj = const_lookup(get_byte_sequence.to_sym, Class)
