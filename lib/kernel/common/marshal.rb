@@ -231,6 +231,7 @@ module Marshal
 
   class State
     attr_accessor :relax_struct_checks
+    attr_accessor :relax_object_ref_checks
 
     def initialize(stream, depth, proc)
       # shared
@@ -338,7 +339,7 @@ module Marshal
             when 64   # ?@
               return construct_object_ref
             when 59   # ?;
-              return construct_symbol_ref # sym
+              return construct_symbol_ref
             when 101  # ?e
               construct_extended_object
               obj = construct nil, false
@@ -382,7 +383,9 @@ module Marshal
               num = construct_integer
               obj = @objects[num]
 
+     unless @relax_object_ref_checks
               raise ArgumentError, "dump format error (unlinked)" unless obj
+     end
 
               return obj
     end

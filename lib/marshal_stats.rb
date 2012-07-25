@@ -73,6 +73,7 @@ class MarshalStats
     minor = @s.readbyte
     @state = State.new(@s, nil, nil)
     @state.relax_struct_checks = true
+    @state.relax_object_ref_checks = true
     @state.h = @ch
     @state.construct
     @state.h
