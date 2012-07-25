@@ -16,7 +16,7 @@ end
 
 class Class
   def __klass_id
-    @__klass_id ||= self.name.dup.freeze
+    @__klass_id ||= self.name.to_sym
   end
 end
 
@@ -60,7 +60,7 @@ class MarshalStats
       @name
     end
     def __klass_id
-      @__klass_id ||= name.to_s.dup.freeze
+      @__klass_id ||= name.to_s.to_sym
     end
     def to_s
       "#<#{self.class} #{@name}>"
