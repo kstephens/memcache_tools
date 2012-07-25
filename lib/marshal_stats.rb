@@ -21,7 +21,7 @@ class Class
 end
 
 class MarshalStats
-  attr_accessor :s, :ch
+  attr_accessor :s, :ch, :state
 
   def initialize s = nil
     @s = s
@@ -35,7 +35,7 @@ class MarshalStats
     @state.relax_struct_checks = true
     @state.relax_object_ref_checks = true
     @state.h = @ch
-    @state.construct
+    @state.construct_top_level
     @state.h
   end
 
@@ -109,6 +109,16 @@ class MarshalStats
         msg ||= yield
         $stderr.puts msg
       end
+    end
+
+    def construct_top_level
+      obj = construct
+      @unique_string.each do | s, c |
+        next unless c >= 2
+        @h.add! :'String redunancies size', s.size
+        @h.add! :'String redunancies counts', c
+      end
+      obj
     end
 
     def construct ivar_index = nil, call_proc = nil
@@ -199,8 +209,8 @@ class MarshalStats
     def construct_string
       obj = count_obj! super
       @h.add! "#{obj.__klass_id}#size", @size
-      unless @unique_string[obj]
-        @unique_string[obj] = true
+      @unique_string[obj] ||= 0
+      if (@unique_string[obj] += 1) == 1
         @h.add! "#{obj.__klass_id}#size unique", @size
       end
       obj

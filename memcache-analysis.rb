@@ -116,6 +116,9 @@ class MemcacheAnalysis
         o.puts "  :stats:"
         ch.put o
         o.puts "  :error: #{cmd[:error].inspect}"
+        ms.state.unique_string.to_a.sort_by{|a| - a[1]}.each do | s, v |
+          o.puts "  # #{v} #{s.inspect}"
+        end
         o.puts "\n"
       end
 
