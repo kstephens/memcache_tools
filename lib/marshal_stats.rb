@@ -292,20 +292,22 @@ class Stats
       c = @s[k]
       c.finish!
       if c.count_only?
-        o.puts "    '#{k}': #{c.count}"
+        o.puts "    :'#{k}': #{c.count}"
         next
       end
       histogram = nil
       if values = c.values and ! values.empty?
         histogram = c.histogram
+        histogram = nil if histogram.empty?
       end
-      o.puts "    #{k.inspect}:"
+      o.puts "    #{k.to_sym.inspect}:"
       c.to_a.each do | k, v |
-        o.puts "       #{k.inspect}: #{v.inspect}"
+        o.puts "       #{k.to_sym.inspect}: #{v.inspect}"
       end
       if histogram
+        o.puts "       :histogram:"
         histogram.each do | l |
-          o.puts "       # #{l}"
+          o.puts "         - #{l.inspect}"
         end
       end
     end
