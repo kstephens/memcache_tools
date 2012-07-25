@@ -43,3 +43,8 @@ end
 class Array
   alias :__append__ :<<
 end
+
+class String
+  alias :getbyte :[]
+end
+
