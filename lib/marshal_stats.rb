@@ -100,6 +100,7 @@ class MarshalStats
     def initialize *args
       super
       @h = Stats.new
+      @unique_string = { }
     end
 
     def __log msg = nil
@@ -166,6 +167,10 @@ class MarshalStats
       obj = super
       @h.count! obj.__klass_id
       @h.add! "#{obj.__klass_id}#size", @size
+      unless @unique_string[obj]
+        @unique_string[obj] = true
+        @h.add! "#{obj.__klass_id}#size unique", @size
+      end
       obj
     end
     def construct_regexp
