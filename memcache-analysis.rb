@@ -104,6 +104,9 @@ class MemcacheAnalysis
         o.puts "\n"
       end
 
+      if @pry_on_error and cmd[:error]
+        binding.pry
+      end
       if @count % 100 == 0
         # binding.pry
       end
@@ -126,6 +129,7 @@ class MemcacheAnalysis
     @count = 0
     @h = Histogram.new
     @ch = Histogram.new
+    @pry_on_error = (ENV['PRY_ON_ERROR'] || 0).to_i > 0
   end
 
   def parse! file
