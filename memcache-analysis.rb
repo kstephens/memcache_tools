@@ -66,10 +66,10 @@ class MemcacheAnalysis
     cmd, *args = l.split(/\s+/)
     case cmd
     when ADD
-      key, what, atime, size = args
-      what = what.to_i
-      atime = atime.to_i
-      atime = Time.at(atime).utc
+      key, x, y, size = args
+      x = x.to_i
+      y = y.to_i
+      # atime = Time.at(x).utc
       size = size.to_i
 
       data = read(size)
@@ -79,7 +79,9 @@ class MemcacheAnalysis
       cmd = {
         :key => key,
         :size => size,
-        :atime => atime,
+        :x => x,
+        :y => y,
+        #:atime => atime,
       }
 
       h.add! :item_size, size
@@ -97,7 +99,9 @@ class MemcacheAnalysis
         o = $stderr
         o.puts "#{cmd[:key]}:"
         o.puts "  :size:  #{cmd[:size]}"
-        o.puts "  :atime: #{cmd[:atime].iso8601}"
+        o.puts "  :x:  #{cmd[:x]}"
+        o.puts "  :y:  #{cmd[:y]}"
+        # o.puts "  :atime: #{cmd[:atime].iso8601}"
         o.puts "  :stats:"
         ch.put o
         o.puts "  :error: #{cmd[:error].inspect}"
