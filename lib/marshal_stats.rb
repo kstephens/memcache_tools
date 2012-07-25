@@ -141,31 +141,31 @@ class MarshalStats
       @h.count! :_old_module
       super
     end
+
+    def count_obj! obj
+      @h.count! obj.__klass_id
+      @h.add! "#{obj.__klass_id} Marshal.dump.size", ::Marshal.dump(obj).size
+      obj
+    end
+
     def construct_integer
       @h.count! :_integer
-      obj = super
-      @h.count! obj.__klass_id
-      obj
+      count_obj! super
     end
     def construct_bignum
       @h.count! :_bignum
-      obj = super
-      @h.count! obj.__klass_id
-      obj
+      count_obj! super
     end
     def construct_float
-      obj = super
-      @h.count! obj.__klass_id
-      obj
+      @h.count! :_float
+      count_obj! super
     end
     def construct_symbol
-      obj = super
-      @h.count! obj.__klass_id
-      obj
+      @h.count! :_symbol
+      count_obj! super
     end
     def construct_string
-      obj = super
-      @h.count! obj.__klass_id
+      obj = count_obj! super
       @h.add! "#{obj.__klass_id}#size", @size
       unless @unique_string[obj]
         @unique_string[obj] = true
@@ -174,20 +174,15 @@ class MarshalStats
       obj
     end
     def construct_regexp
-      obj = super
-      super
-      @h.count! obj.__klass_id
-      obj
+      count_obj! super
     end
     def construct_array
-      obj = super
-      @h.count! obj.__klass_id
+      obj = count_obj! super
       @h.add! "#{obj.__klass_id}#size", @size
       obj
     end
     def construct_hash
-      obj = super
-      @h.count! obj.__klass_id
+      obj = count_obj! super
       @h.add! "#{obj.__klass_id}#size", @size
       obj
     end
@@ -197,15 +192,11 @@ class MarshalStats
     end
     def construct_struct
       @h.count! :_struct
-      obj = super
-      @h.count! obj.__klass_id
-      obj
+      count_obj! super
     end
     def construct_object
       @h.count! :_object
-      obj = super
-      @h.count! obj.__klass_id
-      obj
+      count_obj! super
     end
     def construct_user_defined i
       @h.count! :_user_defined
