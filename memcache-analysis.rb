@@ -63,17 +63,25 @@ class MemcacheAnalysis
 
   def parse_cmd
     l = readline
-    cmd, key, x, y, size = l.split(/\s+/)
-    x = x.to_i
-    y = y.to_i
-    size = size.to_i
+    cmd, *args = l.split(/\s+/)
     case cmd
     when ADD
-      @count += 1
-      data = read(size)
-      $stderr.write "#{size}:"
+      key, what, atime, size = args
+      what = what.to_i
+      atime = atime.to_i
+      atime = Time.at(atime).utc
+      size = size.to_i
 
+      data = read(size)
       readline
+
+      @count += 1
+      cmd = {
+        :key => key,
+        :size => size,
+        :atime => atime,
+      }
+
       h.add! :item_size, size
       ms = MarshalStats.new(data)
       ch = Histogram.new
@@ -81,10 +89,15 @@ class MemcacheAnalysis
       ms.ch = ch
       ms.parse_top_level!
 
-      o = $stderr
-      o.puts "\n"
-      ch.put o
-      o.puts "\n"
+      begin
+        o = $stderr
+        o.puts "#{cmd[:key]}:"
+        o.puts "  :size:  #{cmd[:size]}"
+        o.puts "  :atime: #{cmd[:atime].iso8601}"
+        o.puts "  :stats:"
+        ch.put o
+        o.puts "\n"
+      end
 
       if @count % 100 == 0
         # binding.pry
