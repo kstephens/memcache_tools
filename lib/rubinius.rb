@@ -29,6 +29,7 @@ ImmediateValue = Rubinius::ImmediateValue
   TrueClass,
   FalseClass,
   Fixnum,
+  Symbol,
 ].each { | c | c.instance_eval { include Rubinius::ImmediateValue } }
 
 
