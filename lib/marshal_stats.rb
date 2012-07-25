@@ -43,8 +43,8 @@ class Histogram
     end
     h[:values] << value
     c = h[:count] += 1
-    t = h[:total] += value
-    h[:avg] += t.to_f / c
+    s = h[:sum] += value
+    h[:avg] = s.to_f / c
     @chain.add! stat, value if @chain
     self
   end
@@ -52,7 +52,7 @@ class Histogram
   def merge_from! c
     @c.each do | k, h |
       add! :"#{k}_count", h[:count]
-      add! :"#{k}_total", h[:total] if h[:total]
+      add! :"#{k}_sum", h[:sum] if h[:sum]
     end
     self
   end
@@ -75,7 +75,7 @@ class Histogram
         h[:stddev] = Math.sqrt(values.inject(0){|s, e| s + e}.to_f / n)
       end
       o.puts "    #{k.inspect}:"
-      hks = h.keys.sort_by{|e| e.to_s}
+      hks = h.keys.sort_by{|e| KEY_ORDER[e] || e.to_s}
       hks.each do | hk |
         v = h[hk]
         o.puts "       #{hk.inspect}: #{v.inspect}"
@@ -83,6 +83,17 @@ class Histogram
     end
     self
   end
+
+  KEY_ORDER = { }
+  [
+    :count,
+    :min,
+    :median,
+    :avg,
+    :stddev,
+    :max,
+    :sum,
+  ].inject(0){ |i, k| KEY_ORDER[k] = "_#{i}"; i + 1}
 
 end
 
@@ -294,7 +305,9 @@ class MarshalStats
 
     def extend_object obj
       unless @modules.empty?
-        @h.count! :_extend_object, @modules.size
+        @h.count! :_extend_object
+        @h.add!   :extend, @modules.size
+        @h.count! :"extend(#{@modules.pop.name})" until @modules.empty?
         __log { "  extend_object #{obj} #{@modules.inspect}" }
       end
       @modules.clear
