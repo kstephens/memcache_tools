@@ -4,8 +4,6 @@ $:.unshift(File.expand_path('lib/kernel'))
 require 'common/marshal'
 require 'common/marshal18'
 
-#######################################
-
 ###############################
 
 class Object
@@ -101,6 +99,7 @@ class MarshalStats
       super
       @h = Stats.new
       @unique_string = { }
+      @unique_object = { }
     end
 
     def __log msg = nil
@@ -108,6 +107,21 @@ class MarshalStats
         msg ||= yield
         $stderr.puts msg
       end
+    end
+
+    def construct ivar_index = nil, call_proc = nil
+      obj = super
+=begin
+      unless ivar_index
+        unless Rubinius::Type.object_kind_of? obj, ImmediateValue
+          unless @unique_object[obj.object_id]
+            @unique_object[obj.object_id] = true
+            count_obj_size! obj
+          end
+        end
+      end
+=end
+      obj
     end
 
     def const_lookup name, type = nil
@@ -144,6 +158,11 @@ class MarshalStats
 
     def count_obj! obj
       @h.count! obj.__klass_id
+      obj
+    end
+
+    def count_obj_size! obj
+      $stdout.puts "  # count_obj_size! #{obj.__klass_id} #{obj.object_id}"
       @h.add! "#{obj.__klass_id} Marshal.dump.size", ::Marshal.dump(obj).size
       obj
     end
