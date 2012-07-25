@@ -18,12 +18,26 @@ class Histogram
     end
   end
 
+  def count! stat, value = 1
+    $stderr.puts "  count! #{stat.inspect} #{value.inspect}" if @verbose
+    h = @h[stat]
+    c = h[:count] += value
+    @chain.count! stat, value if @chain
+    self
+  end
+
   def add! stat, value
     $stderr.puts "  add! #{stat.inspect} #{value.inspect}" if @verbose
     h = @h[stat]
+    if ! (x = h[:min]) or value < x
+      h[:min] = value
+    end
+    if ! (x = h[:max]) or value > x
+      h[:max] = value
+    end
     c = h[:count] += 1
     t = h[:total] += value
-    h[:avg] += t / c
+    h[:avg] += t.to_f / c
     @chain.add! stat, value if @chain
     self
   end
@@ -31,20 +45,24 @@ class Histogram
   def merge_from! c
     @c.each do | k, h |
       add! :"#{k}_count", h[:count]
-      add! :"#{k}_total", h[:total]
+      add! :"#{k}_total", h[:total] if h[:total]
     end
     self
   end
 
   def put o = $stdout
-    ks = @h.keys.sort_by{|a, b| a.to_s <=> b.to_s }
+    ks = @h.keys.sort_by{|e| e.to_s}
     ks.each do | k |
-      o.puts "    #{k}:"
       h = @h[k]
-      hks = h.keys.sort_by{|a, b| a.to_s <=> b.to_s }
+      if h.keys.size == 1 and h.keys[0] == :count
+        o.puts "    '#{k}': #{h[:count]}"
+        next
+      end
+      o.puts "    #{k.inspect}:"
+      hks = h.keys.sort_by{|e| e.to_s}
       hks.each do | hk |
         v = h[hk]
-        o.puts "       #{hk}: #{v}"
+        o.puts "       #{hk.inspect}: #{v.inspect}"
       end
     end
     self
@@ -152,94 +170,99 @@ class MarshalStats
     end
 
     def construct_class
-      @h.add! :Class, 1
+      @h.count! :Class
       super
     end
     def construct_module
-      @h.add! :Module, 1
+      @h.count! :Module
       super
     end
     def construct_old_module
-      @h.add! :_old_module, 1
+      @h.count! :_old_module
       super
     end
     def construct_integer
       obj = super
-      @h.add! obj.__klass_id, 1
+      @h.count! obj.__klass_id
       obj
     end
     def construct_bignum
       obj = super
-      @h.add! obj.__klass_id, 1
+      @h.count! obj.__klass_id
       obj
     end
     def construct_float
       obj = super
-      @h.add! obj.__klass_id, 1
+      @h.count! obj.__klass_id
       obj
     end
     def construct_symbol
       obj = super
-      @h.add! obj.__klass_id, 1
+      @h.count! obj.__klass_id
       obj
     end
     def construct_string
       obj = super
-      @h.add! obj.__klass_id, 1
+      @h.count! obj.__klass_id
+      @h.add! "#{obj.__klass_id}#size", @size
       obj
     end
     def construct_regexp
       obj = super
       super
-      @h.add! obj.__klass_id, 1
+      @h.count! obj.__klass_id
       obj
     end
     def construct_array
       obj = super
-      @h.add! obj.__klass_id, 1
+      @h.count! obj.__klass_id
+      @h.add! "#{obj.__klass_id}#size", @size
       obj
     end
     def construct_hash
       obj = super
-      @h.add! obj.__klass_id, 1
+      @h.count! obj.__klass_id
+      @h.add! "#{obj.__klass_id}#size", @size
       obj
     end
     def construct_hash_def
-      @h.add! :_hash_def, 1
+      @h.count! :_hash_def
       super
     end
     def construct_struct
-      @h.add! :Struct, 1
-      super
+      @h.count! :Struct
+      obj = super
+      @h.count! obj.__klass_id
+      obj
     end
     def construct_object
-      @h.add! :_object, 1
+      @h.count! :_object
       obj = super
-      @h.add! obj.__klass_id, 1
+      @h.count! obj.__klass_id
       obj
     end
     def construct_user_defined i
-      @h.add! :_user_defined, 1
+      @h.count! :_user_defined
       super
     end
     def construct_user_marshal
-      @h.add! :_user_marshal, 1
+      @h.count! :_user_marshal
       super
     end
     def construct_data
-      @h.add! :_data, 1
+      @h.count! :_data
       super
     end
 
     def store_unique_object obj
       __log { "  store_unique_object #{obj.class} #{obj}" }
-      @h.add! :_unique_object, 1
+      @h.count! :_unique_object
       super obj
     end
 
     def extend_object obj
       unless @modules.empty?
-        @h.add! :_extend_object, @modules.size
+        @h.count! :_extend_object, @modules.size
         __log { "  extend_object #{obj} #{@modules.inspect}" }
       end
       @modules.clear

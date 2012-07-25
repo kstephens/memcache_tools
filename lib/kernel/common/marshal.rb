@@ -432,7 +432,7 @@ module Marshal
         end
       end
 
-      construct_integer.times do |i|
+      (@size = construct_integer).times do |i|
         obj.__append__ construct
       end
 
@@ -498,7 +498,7 @@ module Marshal
       obj = @user_class ? get_user_class.allocate : {}
       store_unique_object obj
 
-      construct_integer.times do
+      (@size = construct_integer).times do
         key = construct
         val = construct
 
@@ -513,7 +513,7 @@ module Marshal
       obj = @user_class ? get_user_class.allocate : {}
       store_unique_object obj
 
-      construct_integer.times do
+      (@size = construct_integer).times do
         key = construct
         val = construct
         obj[key] = val
@@ -693,8 +693,8 @@ module Marshal
     end
 
     def get_byte_sequence
-      size = construct_integer
-      consume size
+      @size = construct_integer
+      consume @size
     end
 
     def get_user_class
