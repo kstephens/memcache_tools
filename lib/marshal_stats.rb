@@ -185,12 +185,26 @@ class MarshalStats
       PhonyClass.new(name)
     end
 
+    def construct_extended_object
+      @h.count! :_extended_object
+      super
+    end
+
+    def construct_object_ref
+      @h.count! :_object_ref
+      super
+    end
+    def construct_symbol_ref
+      @h.count! :_symbol_ref
+      super
+    end
+
     def construct_class
-      @h.count! :Class
+      @h.count! :_class
       super
     end
     def construct_module
-      @h.count! :Module
+      @h.count! :_module
       super
     end
     def construct_old_module
@@ -198,11 +212,13 @@ class MarshalStats
       super
     end
     def construct_integer
+      @h.count! :_integer
       obj = super
       @h.count! obj.__klass_id
       obj
     end
     def construct_bignum
+      @h.count! :_bignum
       obj = super
       @h.count! obj.__klass_id
       obj
@@ -246,7 +262,7 @@ class MarshalStats
       super
     end
     def construct_struct
-      @h.count! :Struct
+      @h.count! :_struct
       obj = super
       @h.count! obj.__klass_id
       obj
