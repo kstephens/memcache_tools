@@ -217,9 +217,8 @@ class MarshalStats
       super
     end
     def construct_data
-      name = get_symbol
-      @h.add! name, 1
-      PhonyObject.new(name)
+      @h.add! :_data, 1
+      super
     end
 
     def store_unique_object obj
