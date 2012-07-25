@@ -192,6 +192,8 @@ class MatchData
   include Unmarshalable
 end
 
+module HackedMarshal
+
 module Marshal
 
   MAJOR_VERSION = 4
@@ -1027,3 +1029,6 @@ module Marshal
   end
 
 end
+
+end # HackedMarshal
+

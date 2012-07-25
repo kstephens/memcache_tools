@@ -19,6 +19,7 @@ class Module
   end
 end
 
+module HackedMarshal
 module Marshal
   class State
     def serialize_encoding?(obj)
@@ -26,3 +27,5 @@ module Marshal
     end
   end
 end
+end
+

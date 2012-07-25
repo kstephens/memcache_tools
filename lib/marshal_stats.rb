@@ -1,4 +1,4 @@
-# Hack rubinius Marshal
+# Hacked up rubinius Marshal
 require 'rubinius'
 $:.unshift(File.expand_path('lib/kernel'))
 require 'common/marshal'
@@ -85,7 +85,7 @@ class MarshalStats
     end
   end
 
-  class State < Marshal::IOState
+  class State < HackedMarshal::Marshal::IOState
     attr_accessor :h
 
     def initialize *args

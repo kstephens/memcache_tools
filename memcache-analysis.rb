@@ -9,6 +9,7 @@ $:.unshift(File.expand_path('lib'))
 require 'marshal_stats'
 
 #######################################
+
 module TrickSerial
   class Serializer
     class ActiveRecordProxy
