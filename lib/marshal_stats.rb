@@ -164,36 +164,45 @@ class MarshalStats
       super
     end
     def construct_integer
-      @h.add! :Fixnum, 1
-      super
+      obj = super
+      @h.add! obj.__klass_id, 1
+      obj
     end
     def construct_bignum
-      @h.add! :Bignum, 1
-      super
+      obj = super
+      @h.add! obj.__klass_id, 1
+      obj
     end
     def construct_float
-      @h.add! :Float, 1
-      super
+      obj = super
+      @h.add! obj.__klass_id, 1
+      obj
     end
     def construct_symbol
-      @h.add! :Symbol, 1
-      super
+      obj = super
+      @h.add! obj.__klass_id, 1
+      obj
     end
     def construct_string
-      @h.add! :String, 1
-      super
+      obj = super
+      @h.add! obj.__klass_id, 1
+      obj
     end
     def construct_regexp
-      @h.add! :Regexp, 1
+      obj = super
       super
+      @h.add! obj.__klass_id, 1
+      obj
     end
     def construct_array
-      @h.add! :Array, 1
-      super
+      obj = super
+      @h.add! obj.__klass_id, 1
+      obj
     end
     def construct_hash
-      @h.add! :Hash, 1
-      super
+      obj = super
+      @h.add! obj.__klass_id, 1
+      obj
     end
     def construct_hash_def
       @h.add! :_hash_def, 1

@@ -96,7 +96,7 @@ class MemcacheAnalysis
       end
 
       begin
-        o = $stderr
+        o = $stdout
         o.puts "#{cmd[:key]}:"
         o.puts "  :size:  #{cmd[:size]}"
         o.puts "  :x:  #{cmd[:x]}"
