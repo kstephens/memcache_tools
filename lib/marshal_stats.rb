@@ -4,6 +4,8 @@ $:.unshift(File.expand_path('lib/kernel'))
 require 'common/marshal'
 require 'common/marshal18'
 
+require 'pp'
+
 ###############################
 
 class Object
@@ -93,7 +95,7 @@ class MarshalStats
   end
 
   class State < HackedMarshal::Marshal::IOState
-    attr_accessor :h
+    attr_accessor :h, :unique_string, :unique_object
 
     def initialize *args
       super
@@ -110,17 +112,18 @@ class MarshalStats
     end
 
     def construct ivar_index = nil, call_proc = nil
+      start_pos = @stream.pos
       obj = super
-=begin
+      end_pos = @stream.pos
+      size = end_pos - start_pos
       unless ivar_index
         unless Rubinius::Type.object_kind_of? obj, ImmediateValue
           unless @unique_object[obj.object_id]
-            @unique_object[obj.object_id] = true
-            count_obj_size! obj
+            @unique_object[obj.object_id] = size
+            count_obj_size! obj, size
           end
         end
       end
-=end
       obj
     end
 
@@ -161,9 +164,14 @@ class MarshalStats
       obj
     end
 
-    def count_obj_size! obj
-      $stdout.puts "  # count_obj_size! #{obj.__klass_id} #{obj.object_id}"
-      @h.add! "#{obj.__klass_id} Marshal.dump.size", ::Marshal.dump(obj).size
+    def count_obj_size! obj, size
+      # $stdout.puts "  # count_obj_size! #{obj.__klass_id} #{obj.object_id}"
+      @h.add! :"#{obj.__klass_id} stream_size", size
+=begin
+      #if Hash === obj and size > 2000
+        pp [ :big_Hash, obj ]
+      end
+=end
       obj
     end
 
