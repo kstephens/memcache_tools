@@ -6,97 +6,6 @@ require 'common/marshal18'
 
 #######################################
 
-class Histogram
-  attr_accessor :chain
-  attr_accessor :verbose
-
-  def initialize
-    @h = Hash.new do | h, k |
-      h[k] = Hash.new do | h, k |
-        h[k] =
-          case k
-          when :values
-            [ ]
-          else
-            0
-          end
-      end
-    end
-  end
-
-  def count! stat, value = 1
-    $stderr.puts "  count! #{stat.inspect} #{value.inspect}" if @verbose
-    h = @h[stat]
-    c = h[:count] += value
-    @chain.count! stat, value if @chain
-    self
-  end
-
-  def add! stat, value
-    $stderr.puts "  add! #{stat.inspect} #{value.inspect}" if @verbose
-    h = @h[stat]
-    if ! (x = h[:min]) or value < x
-      h[:min] = value
-    end
-    if ! (x = h[:max]) or value > x
-      h[:max] = value
-    end
-    h[:values] << value
-    c = h[:count] += 1
-    s = h[:sum] += value
-    h[:avg] = s.to_f / c
-    @chain.add! stat, value if @chain
-    self
-  end
-
-  def merge_from! c
-    @c.each do | k, h |
-      add! :"#{k}_count", h[:count]
-      add! :"#{k}_sum", h[:sum] if h[:sum]
-    end
-    self
-  end
-
-  def put o = $stdout
-    ks = @h.keys.sort_by{|e| e.to_s}
-    ks.each do | k |
-      h = @h[k]
-      if h.keys.size == 1 and h.keys[0] == :count
-        o.puts "    '#{k}': #{h[:count]}"
-        next
-      end
-      if values = h.delete(:values) and ! values.empty?
-        n = values.size
-        values.sort!
-        h[:median] = values[n / 2]
-        avg = h[:avg]
-        values.map!{|v| v = (v - avg); v * v}
-        values.sort!
-        h[:stddev] = Math.sqrt(values.inject(0){|s, e| s + e}.to_f / n)
-      end
-      o.puts "    #{k.inspect}:"
-      hks = h.keys.sort_by{|e| KEY_ORDER[e] || e.to_s}
-      hks.each do | hk |
-        v = h[hk]
-        o.puts "       #{hk.inspect}: #{v.inspect}"
-      end
-    end
-    self
-  end
-
-  KEY_ORDER = { }
-  [
-    :count,
-    :min,
-    :median,
-    :avg,
-    :stddev,
-    :max,
-    :sum,
-  ].inject(0){ |i, k| KEY_ORDER[k] = "_#{i}"; i + 1}
-
-end
-
 ###############################
 
 class Object
@@ -181,7 +90,7 @@ class MarshalStats
 
     def initialize *args
       super
-      @h = Histogram.new
+      @h = Stats.new
     end
 
     def __log msg = nil
@@ -319,5 +228,97 @@ class MarshalStats
     end
 
   end
+
+class Stats
+  attr_accessor :chain
+  attr_accessor :verbose
+
+  def initialize
+    @h = Hash.new do | h, k |
+      h[k] = Hash.new do | h, k |
+        h[k] =
+          case k
+          when :values
+            [ ]
+          else
+            0
+          end
+      end
+    end
+  end
+
+  def count! stat, value = 1
+    $stderr.puts "  count! #{stat.inspect} #{value.inspect}" if @verbose
+    h = @h[stat]
+    c = h[:count] += value
+    @chain.count! stat, value if @chain
+    self
+  end
+
+  def add! stat, value
+    $stderr.puts "  add! #{stat.inspect} #{value.inspect}" if @verbose
+    h = @h[stat]
+    if ! (x = h[:min]) or value < x
+      h[:min] = value
+    end
+    if ! (x = h[:max]) or value > x
+      h[:max] = value
+    end
+    h[:values] << value
+    c = h[:count] += 1
+    s = h[:sum] += value
+    h[:avg] = s.to_f / c
+    @chain.add! stat, value if @chain
+    self
+  end
+
+  def merge_from! c
+    @c.each do | k, h |
+      add! :"#{k}_count", h[:count]
+      add! :"#{k}_sum", h[:sum] if h[:sum]
+    end
+    self
+  end
+
+  def put o = $stdout
+    ks = @h.keys.sort_by{|e| e.to_s}
+    ks.each do | k |
+      h = @h[k]
+      if h.keys.size == 1 and h.keys[0] == :count
+        o.puts "    '#{k}': #{h[:count]}"
+        next
+      end
+      if values = h.delete(:values) and ! values.empty?
+        n = values.size
+        values.sort!
+        h[:median] = values[n / 2]
+        avg = h[:avg]
+        values.map!{|v| v = (v - avg); v * v}
+        values.sort!
+        h[:stddev] = Math.sqrt(values.inject(0){|s, e| s + e}.to_f / n)
+      end
+      o.puts "    #{k.inspect}:"
+      hks = h.keys.sort_by{|e| KEY_ORDER[e] || e.to_s}
+      hks.each do | hk |
+        v = h[hk]
+        o.puts "       #{hk.inspect}: #{v.inspect}"
+      end
+    end
+    self
+  end
+
+  KEY_ORDER = { }
+  [
+    :count,
+    :min,
+    :median,
+    :avg,
+    :stddev,
+    :max,
+    :sum,
+  ].inject(0){ |i, k| KEY_ORDER[k] = "_#{i}"; i + 1}
+
+end
+
 end
 

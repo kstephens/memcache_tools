@@ -72,6 +72,8 @@ class MemcacheAnalysis
       # atime = Time.at(x).utc
       size = size.to_i
 
+      $stderr.write "#{size}."
+
       data = read(size)
       readline
 
@@ -85,10 +87,11 @@ class MemcacheAnalysis
       }
 
       h.add! :item_size, size
+
+      ch = MarshalStats::Stats.new
       begin
         ms = MarshalStats.new(data)
-        ch = Histogram.new
-        ch.chain = @ch
+        # ch.chain = @ch
         ms.ch = ch
         ms.parse_top_level!
       rescue Exception => exc
@@ -131,8 +134,8 @@ class MemcacheAnalysis
   def initialize
     @lines = 0
     @count = 0
-    @h = Histogram.new
-    @ch = Histogram.new
+    @h = MarshalStats::Stats.new
+    @ch = MarshalStats::Stats.new
     @pry_on_error = (ENV['PRY_ON_ERROR'] || 0).to_i > 0
   end
 
