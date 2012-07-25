@@ -23,18 +23,23 @@ end
 module ActiveRecord
   module Reflection
     class AssociationReflection
+      attr_accessor :class_name, :name
       def __klass_id
         #"#{self.class}(#{instance_variables.inspect})"
         # "#{self.class}(#{@klass}, #{@name}, #{@primary_key_name}, #{@active_record})"
-        "#{self.class}(#{@class_name}, #{@name})"
+        @__klass_id ||=
+          "#{self.class}(#{@class_name}, #{@name})"
       end
       alias :to_s :__klass_id
     end
   end
+
   module Associations
     class BelongsToAssociation
       def __klass_id
-        "#{self.class}(#{@reflection})"
+        #"#{self.class}(#{@owner && @owner.__klass_id}, #{@reflection})" #<< instance_variables.inspect
+        @__klass_id ||=
+          "#{@owner && @owner.__klass_id}.belongs_to :#{@reflection.name}, :class => #{@reflection.class_name}"
       end
     end
   end

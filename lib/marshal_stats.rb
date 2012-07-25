@@ -10,7 +10,13 @@ require 'common/marshal18'
 
 class Object
   def __klass_id
-    self.class.name
+    self.class.__klass_id
+  end
+end
+
+class Class
+  def __klass_id
+    @__klass_id ||= self.name.dup.freeze
   end
 end
 
@@ -53,6 +59,9 @@ class MarshalStats
     def name
       @name
     end
+    def __klass_id
+      @__klass_id ||= name.to_s.dup.freeze
+    end
     def to_s
       "#<#{self.class} #{@name}>"
     end
@@ -66,7 +75,7 @@ class MarshalStats
       @__klass
     end
     def __klass_id
-      @__klass.name.to_s
+      @__klass.__klass_id
     end
     def _load_data x
       @_load_data = x
