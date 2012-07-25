@@ -230,6 +230,7 @@ module Marshal
   TYPE_LINK = ?@
 
   class State
+    attr_accessor :relax_struct_checks
 
     def initialize(stream, depth, proc)
       # shared
@@ -608,16 +609,20 @@ module Marshal
       store_unique_object name
 
       klass = const_lookup name, Class
+      unless @relax_struct_checks
       members = klass.members
+      end
 
       obj = klass.allocate
       store_unique_object obj
 
       construct_integer.times do |i|
         slot = get_symbol
+        unless @relax_struct_checks
         unless members[i].intern == slot
           raise TypeError, "struct %s is not compatible (%p for %p)" %
             [klass, slot, members[i]]
+        end
         end
 
         obj.instance_variable_set "@#{slot}", construct
