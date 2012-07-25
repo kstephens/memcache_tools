@@ -345,7 +345,10 @@ class Stats
     end
 
     def finish!
-      if @values && ! @values.empty?
+      if @count == 1
+        @min = @max = @avg = nil
+      end
+      if @avg && @values && ! @values.empty?
         @values.sort!
         n = @values.size
         @median = @values[n / 2]
