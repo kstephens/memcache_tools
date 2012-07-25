@@ -915,7 +915,10 @@ module Marshal
     end
 
     def set_instance_variables(obj)
-      construct_integer.times do
+      _set_instance_variables(obj, construct_integer)
+    end
+    def _set_instance_variables(obj, count)
+      count.times do
         ivar = get_symbol
         value = construct
         obj.__instance_variable_set__ prepare_ivar(ivar), value

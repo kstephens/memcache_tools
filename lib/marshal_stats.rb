@@ -269,9 +269,10 @@ class MarshalStats
       @modules.clear
     end
 
-    def set_instance_variables obj
+    def _set_instance_variables obj, count
       __log { "  set_instance_variables #{obj}" }
       super
+      @h.add! :"#{obj.__klass_id} ivars.size", count
     end
 
   end
