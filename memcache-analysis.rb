@@ -107,9 +107,9 @@ class MemcacheAnalysis
       begin
         o = $stdout
         o.puts "#{cmd[:key]}:"
-        o.puts "  :size:  #{cmd[:size]}"
-        o.puts "  :x:  #{cmd[:x]}"
-        o.puts "  :y:  #{cmd[:y]}"
+        o.puts "  :size: #{cmd[:size]}"
+        o.puts "  :x:    #{cmd[:x]}"
+        o.puts "  :y:    #{cmd[:y]}"
         # o.puts "  :atime: #{cmd[:atime].iso8601}"
         o.puts "  :stats:"
         ch.put o
