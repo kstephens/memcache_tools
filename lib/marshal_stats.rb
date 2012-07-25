@@ -116,6 +116,9 @@ class MarshalStats
     def _load_data x
       @_load_data = x
     end
+    def marshal_load x
+      @marshal_load = x
+    end
     def __instance_variable_set__ n, v
       # $stderr.puts "  #{self} _ivs_ #{n.inspect} #{v.class} #{v}"
     end
