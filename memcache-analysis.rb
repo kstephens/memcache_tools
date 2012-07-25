@@ -83,11 +83,15 @@ class MemcacheAnalysis
       }
 
       h.add! :item_size, size
-      ms = MarshalStats.new(data)
-      ch = Histogram.new
-      ch.chain = @ch
-      ms.ch = ch
-      ms.parse_top_level!
+      begin
+        ms = MarshalStats.new(data)
+        ch = Histogram.new
+        ch.chain = @ch
+        ms.ch = ch
+        ms.parse_top_level!
+      rescue Exception => exc
+        cmd[:error] = [ exc.class.name, exc.inspect, exc.backtrace ]
+      end
 
       begin
         o = $stderr
@@ -96,6 +100,7 @@ class MemcacheAnalysis
         o.puts "  :atime: #{cmd[:atime].iso8601}"
         o.puts "  :stats:"
         ch.put o
+        o.puts "  :error: #{cmd[:error].inspect}"
         o.puts "\n"
       end
 
