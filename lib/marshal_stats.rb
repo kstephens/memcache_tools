@@ -224,11 +224,13 @@ class MarshalStats
 
     def store_unique_object obj
       __log { "  store_unique_object #{obj.class} #{obj}" }
+      @h.add! :_unique_object, 1
       super obj
     end
 
     def extend_object obj
       unless @modules.empty?
+        @h.add! :_extend_object, @modules.size
         __log { "  extend_object #{obj} #{@modules.inspect}" }
       end
       @modules.clear
