@@ -100,6 +100,7 @@ class MarshalStats
     def initialize *args
       super
       @h = Stats.new
+      @phony_class = { }
       @unique_string = { }
       @unique_object = { }
     end
@@ -113,33 +114,65 @@ class MarshalStats
 
     def construct_top_level
       obj = construct
-      @unique_string.each do | s, c |
+      top_level_stats!
+      obj
+    end
+
+    def top_level_stats!
+      @unique_object.each do | oid, h |
+        obj = h[:object]
+        size = h[:size] = h[:end_pos] - h[:start_pos]
+        begin
+          # size in Marshal stream, includes subobjects.
+          count_obj_size! obj, size
+          # Enumerable size.
+          case obj
+          when String
+            @unique_string[obj] ||= 0
+            if (@unique_string[obj] += 1) == 1
+              @h.add! "#{obj.__klass_id}#size unique", @size
+            end
+          when String, Array, Hash, Enumerable
+            @h.add! "#{obj.__klass_id}#size", obj.size
+          when Symbol, Regexp
+            @h.add! "#{obj.__klass_id}#size", obj.to_s.size
+          else
+          end
+          # # of ivars.
+          @h.add! :"#{obj.__klass_id} ivars.size", obj.instance_variables.size
+        rescue SignalException, Interrupt, SystemExit
+          raise
+        rescue ::Exception => exc
+          $stderr.puts "  #{self.class}: ERROR #{exc.inspect} in #{obj.class} #{obj}"
+        end
+      end
+
+      @unique_string.each do | obj, c |
         next unless c >= 2
-        @h.add! :'String redunancies size', s.size
+        @h.add! :'String redunancies size', obj.size
         @h.add! :'String redunancies counts', c
       end
-      obj
+
+      self
     end
 
     def construct ivar_index = nil, call_proc = nil
       start_pos = @stream.pos
       obj = super
       end_pos = @stream.pos
-      size = end_pos - start_pos
-      unless ivar_index
-        unless Rubinius::Type.object_kind_of? obj, ImmediateValue
-          unless @unique_object[obj.object_id]
-            @unique_object[obj.object_id] = size
-            count_obj_size! obj, size
-          end
-        end
+
+      unless Rubinius::Type.object_kind_of? obj, ImmediateValue
+        h = @unique_object[obj.object_id] ||= { :object => obj }
+        h[:start_pos] ||= start_pos
+        h[:end_pos] = end_pos unless ivar_index
       end
+
       obj
     end
 
     def const_lookup name, type = nil
       __log { "  const_lookup #{name.inspect} #{type.inspect}" }
-      PhonyClass.new(name)
+      @phony_class[name] ||= PhonyClass.new(name)
     end
 
     def construct_extended_object
