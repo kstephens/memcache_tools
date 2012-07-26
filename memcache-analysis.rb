@@ -23,24 +23,38 @@ end
 module ActiveRecord
   module Reflection
     class AssociationReflection
-      attr_accessor :class_name, :name
+      attr_accessor :macro, :class_name, :klass, :name
       def __klass_id
         #"#{self.class}(#{instance_variables.inspect})"
         # "#{self.class}(#{@klass}, #{@name}, #{@primary_key_name}, #{@active_record})"
         @__klass_id ||=
-          "#{self.class}(#{@class_name}, #{@name})"
+          "#{self.class}(#{@class_name || @klass.__klass_id}, #{@name})"
       end
       alias :to_s :__klass_id
     end
   end
 
   module Associations
-    class BelongsToAssociation
+    class Base
       def __klass_id
         #"#{self.class}(#{@owner && @owner.__klass_id}, #{@reflection})" #<< instance_variables.inspect
+        unless Reflection::AssociationReflection === @reflection
+          $stderr.puts "\n  #### Broken reflection in #{self.class}\n   association = #{inspect}\n  @reflection = #{@reflection.class} #{@reflection.inspect}"
+          x = Reflection::AssociationReflection.new
+          x.name = @reflection
+          x.macro = :_MACRO
+          x.class_name = :_CLASS
+          @reflection = x
+        end
         @__klass_id ||=
-          "#{@owner && @owner.__klass_id}.belongs_to :#{@reflection.name}, :class => #{@reflection.class_name}"
+          "#{@owner && @owner.__klass_id}.#{@reflection.macro} :#{@reflection.name}, :class => #{@reflection.class_name || @reflection.klass.__klass_id} (#{self.class})"
       end
+    end
+    class BelongsToAssociation < Base
+    end
+    class HasAndBelongsToManyAssociation < Base
+    end
+    class HasManyAssociation < Base
     end
   end
 end
