@@ -233,32 +233,28 @@ class MarshalStats
     def construct_symbol
       @h.count! :_symbol
       obj = count_obj! super
-      @h.add! "#{obj.__klass_id}#to_s.size", obj.to_s.size
       #if obj.to_s.size > 40
       #  $stdout.puts "   # **** large Symbol: #{obj}"
       #end
       obj
     end
     def construct_string
+      @h.count! :_string
       obj = count_obj! super
-      @h.add! "#{obj.__klass_id}#size", @size
-      @unique_string[obj] ||= 0
-      if (@unique_string[obj] += 1) == 1
-        @h.add! "#{obj.__klass_id}#size unique", @size
-      end
       obj
     end
     def construct_regexp
+      @h.count! :_regexp
       count_obj! super
     end
     def construct_array
+      @h.count! :_array
       obj = count_obj! super
-      @h.add! "#{obj.__klass_id}#size", @size
       obj
     end
     def construct_hash
+      @h.count! :_hash
       obj = count_obj! super
-      @h.add! "#{obj.__klass_id}#size", @size
       obj
     end
     def construct_hash_def
@@ -305,7 +301,6 @@ class MarshalStats
     def _set_instance_variables obj, count
       __log { "  set_instance_variables #{obj}" }
       super
-      @h.add! :"#{obj.__klass_id} ivars.size", count
     end
 
   end
