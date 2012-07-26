@@ -98,6 +98,9 @@ class MemcacheAnalysis
       readline
 
       @count += 1
+
+      return unless size > 80000
+ 
       cmd = {
         :key => key,
         :size => size,
