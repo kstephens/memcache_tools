@@ -45,31 +45,39 @@ class MarshalStats
     @state.h
   end
 
-  class PhonyClass
-    REAL_CLASS = { }
+  class PhonyModule
+    REAL_MODULE = { }
     def initialize name
       @name = name
-      @real_class = (REAL_CLASS[@name] ||= [ (eval(@name.to_s) rescue nil) ]).first
+      @real_module = (REAL_MODULE[@name] ||= [ (eval(@name.to_s) rescue nil) ]).first
     end
+    def _metaclass; ::Module; end
+    def __klass_id
+      @__klass_id ||= name.to_s.to_sym
+    end
+    def to_s
+      "#<#{_metaclass} #{@name}>"
+    end
+    def name
+      @name.to_s
+    end
+    def inspect
+      self.to_s
+    end
+  end
+
+  class PhonyClass < PhonyModule
+    def _metaclass; ::Class; end
     def allocate
-      if @real_class
+      if @real_module
         # $stderr.puts "  PhonyClass making real #{@real_class}"
-        @real_class.allocate
+        @real_module.allocate
       else
         PhonyObject.new(self)
       end
     end
     def _load data
       # $stderr.puts "  #{self} _load #{data.inspect}"
-    end
-    def name
-      @name
-    end
-    def __klass_id
-      @__klass_id ||= name.to_s.to_sym
-    end
-    def to_s
-      "#<#{self.class} #{@name}>"
     end
   end
 
@@ -90,13 +98,31 @@ class MarshalStats
       @marshal_load = x
     end
     def __instance_variable_set__ n, v
+      (@_instance_variables ||= { })[n] = v
       # $stderr.puts "  #{self} _ivs_ #{n.inspect} #{v.class} #{v}"
+    end
+    def instance_variable_get n
+      @_instance_variables && @_instance_variables[n]
+    end
+    def instance_variables
+      (@_instance_variables || EMPTY_Hash).keys
     end
     def __store__ k, v
       # $stderr.puts "  #{self} __store__ #{k.inspect} #{v.class} #{v}"
     end
     def to_s
       "#<#{@__klass} #{object_id}>"
+    end
+    def inspect
+      "#<#{@__klass} #{object_id} #{instance_variables.inspect}>"
+    end
+    def method_missing sel, *args
+      if args.size == 1 and
+          ! block_given? and
+          @_instance_variables and
+          @_instance_variables.key?(k = :"@#{sel}")
+        @_instance_variables[k]
+      else super end
     end
   end
 
@@ -106,7 +132,7 @@ class MarshalStats
     def initialize *args
       super
       @h = Stats.new
-      @phony_class = { }
+      @phony_module = { }
       @unique_string = { }
       @unique_object = { }
     end
@@ -120,8 +146,19 @@ class MarshalStats
 
     def construct_top_level
       obj = construct
+      @root_object = obj
       top_level_stats!
       obj
+    end
+
+    def objects
+      @objects ||= @unique_object.values.map{|h| h[:object]}
+    end
+    def classes
+      @classes ||= @phony_module.values.select{|o| PhonyClass === o}
+    end
+    def modules
+      @modules ||= @phony_module.values.select{|o| PhonyModule === o and ! PhonyClass === o}
     end
 
     def top_level_stats!
@@ -177,8 +214,9 @@ class MarshalStats
     end
 
     def const_lookup name, type = nil
+      type ||= ::Module
       __log { "  const_lookup #{name.inspect} #{type.inspect}" }
-      @phony_class[name] ||= PhonyClass.new(name)
+      @phony_module[name] ||= (type == ::Class ? PhonyClass : PhonyModule).new(name)
     end
 
     def construct_extended_object
