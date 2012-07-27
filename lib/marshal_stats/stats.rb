@@ -125,13 +125,14 @@ class Stats
     end
 
     def add! x
+      @values << x if @values
+      x = x.value if x.respond_to?(:value)
       unless @min
         @min = @max = x
       else
         @min = x if x < @min
         @max = x if x > @max
       end
-      @values << x if @values
       @sum ||= 0
       s = @sum += x
       c = @count += 1
@@ -151,7 +152,7 @@ class Stats
         @values.sort!
         n = @values.size
         @median = @values[n / 2]
-        v = @values.map{|e| e = (e - @avg); e * e}
+        v = @values.map{|e| e = (e.to_numeric - @avg); e * e}
         v.sort!
         s = 0
         v.each {|e| s += e }
@@ -181,6 +182,14 @@ class Stats
     def inspect
       to_s
     end
+  end
+
+  class Value < Struct.new(:value, :object)
+    include Comparable
+    def <=> x
+      value <=> x.value
+    end
+    alias :to_numeric :value
   end
 
   class Graph < Bucket
@@ -213,7 +222,7 @@ class Stats
       @min = @force_min if @force_min
       @max = @force_max if @force_max
       @max_min = @max - @min
-      @values_are_integers = @values.all?{|e| Integer === e}
+      @values_are_integers = @values.all?{|e| Integer === e.to_numeric}
       if @values_are_integers
         if @width > @max_min
           @width = @max_min.to_i
@@ -386,3 +395,8 @@ end
 
 end
 
+class Numeric
+  def to_numeric
+    self
+  end
+end
