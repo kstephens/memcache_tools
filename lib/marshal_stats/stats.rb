@@ -377,8 +377,8 @@ class Stats
       formatted
     end
 
-    def thousands x
-      x && x.to_s.reverse!.gsub(/(\d{3})/, "\\1,").reverse!.sub(/^(\D|\A),/, '')
+    def thousands x, sep = '_'
+      x && x.to_s.reverse!.gsub(/(\d{3})/, "\\1#{sep}").reverse!.sub(/^(\D|\A)#{sep}/, '')
     end
   end
 
