@@ -7,6 +7,7 @@ require 'pry'
 require 'time'
 $:.unshift(File.expand_path('lib'))
 require 'marshal_stats'
+require 'object_class_graph'
 
 #######################################
 
@@ -85,9 +86,11 @@ class MemcacheAnalysis
     end
 
     def root_object; analysis unless @root_object; @root_object; end
+    alias :r :root_object
     def objects;     analysis unless @objects; @objects; end
     def classes;     analysis unless @classes; @classes; end
     def modules;     analysis unless @modules; @modules; end
+    def c name; classes.find{|c| c.name == name}; end
 
     def analyze!
       self.s = MarshalStats::Stats.new
@@ -261,6 +264,10 @@ class MemcacheAnalysis
     @items.sort!
     obj.h
     obj.shell! if $stdout.isatty
+  end
+
+  def ocg x
+    ObjectClassGraph.new.run!(x)
   end
 
   def shell!
