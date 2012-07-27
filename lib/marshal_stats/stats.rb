@@ -18,10 +18,12 @@ class Stats
     @s = { }
   end
 
-  def stat stat
-    @s[stat] ||= Bucket.new(:name => stat, :values => [ ])
+  def stat k
+    @s[k] ||= Bucket.new(:name => k, :values => [ ])
   end
-  alias :[] :stat
+  def [] k
+    @s[k] || @s[k.to_sym]
+  end
   def keys
     @s.keys.sort_by{|s| s.to_s}
   end
@@ -74,7 +76,7 @@ class Stats
   end
 
   def h
-    o
+    put
     nil
   end
 
@@ -165,6 +167,9 @@ class Stats
     def h opts = nil
       h = histogram(opts)
       $stdout.puts "# #{self.class} #{@name}"
+      to_a.each do | k, v |
+        $stdout.puts "#{k.inspect}: #{v}" if v
+      end
       $stdout.puts h * "\n"
       nil
     end
@@ -273,6 +278,8 @@ class Stats
 
       @buckets = Hash.new { |h, k| b = Bucket.new; b.name = k; h[k] = b }
       @values.each do | v |
+        next if @min and v < @min
+        next if @max and v > @max
         i = @x_graph.v_to_x(v).to_i
         if i >= 0 and i < @x_graph.width
           @buckets[i].add! v

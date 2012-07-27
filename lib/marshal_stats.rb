@@ -23,26 +23,38 @@ end
 ###############################
 
 class MarshalStats
-  attr_accessor :s, :ch, :state
+  EMPTY_Hash = { }.freeze; EMPTY_Array = [ ].freeze; EMPTY_String = ''.freeze
+  attr_accessor :name
+  attr_accessor :s, :stats
 
   def inspect
-    to_s
+    "#<#{self.class} object=#{@objects.size} classes=#{@classes.size} modules=#{@modules.size}>"
   end
 
   def initialize s = nil
     @s = s
   end
 
-  def parse_top_level!
+  def parse_top_level! item = nil
     @s = StringIO.new(@s) if String === @s
     major = @s.readbyte
     minor = @s.readbyte
-    @state = State.new(@s, nil, nil)
-    @state.relax_struct_checks = true
-    @state.relax_object_ref_checks = true
-    @state.h = @ch
-    @state.construct_top_level
-    @state.h
+
+    state = State.new(@s, nil, nil)
+    state.relax_struct_checks = true
+    state.relax_object_ref_checks = true
+    # state.stats = @stats
+    state.h = @stats  # FIXME
+    state.construct_top_level
+
+    if item
+      item.root_object = state.root_object
+      item.objects = state.objects
+      item.classes = state.classes.sort_by{|x| x.to_s}
+      item.modules = state.modules.sort_by{|x| x.to_s}
+    end
+
+    @stats
   end
 
   class PhonyModule
@@ -128,6 +140,7 @@ class MarshalStats
 
   class State < HackedMarshal::Marshal::IOState
     attr_accessor :h, :unique_string, :unique_object
+    attr_accessor :root_object
 
     def initialize *args
       super
@@ -175,7 +188,7 @@ class MarshalStats
             if (@unique_string[obj] += 1) == 1
               @h.add! "#{obj.__klass_id}#size unique", @size
             end
-          when String, Array, Hash, Enumerable
+          when String, Array, Hash # , Enumerable: fails on Range
             @h.add! "#{obj.__klass_id}#size", obj.size
           when Symbol, Regexp
             @h.add! "#{obj.__klass_id}#size", obj.to_s.size
@@ -186,7 +199,7 @@ class MarshalStats
         rescue SignalException, Interrupt, SystemExit
           raise
         rescue ::Exception => exc
-          $stderr.puts "  #{self.class}: ERROR #{exc.inspect} in #{obj.class} #{obj}"
+          $stderr.puts "  #{self.class}: ERROR #{exc.inspect} in #{obj.class} #{obj}:\n  #{exc.backtrace * "\n  "}"
         end
       end
 
