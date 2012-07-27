@@ -266,7 +266,7 @@ class Stats
   class Histogram
     include Initialization
 
-    attr_accessor :values
+    attr_accessor :name, :values
     attr_accessor :min, :max
     attr_accessor :width, :height, :show_sum
 
@@ -313,7 +313,7 @@ class Stats
       rows = [ ]
       table =
         Terminal::Table.new() do | t |
-
+        t.title = @name
         s = t.style
         s.border_x =
           s.border_y =
