@@ -273,6 +273,8 @@ class Stats
 
       @buckets = Hash.new { |h, k| b = Bucket.new; b.name = k; h[k] = b }
       @values.each do | v |
+        next if @min && v < @min
+        next if @max && v > @max
         i = @x_graph.v_to_x(v).to_i
         if i >= 0 and i < @x_graph.width
           @buckets[i].add! v
