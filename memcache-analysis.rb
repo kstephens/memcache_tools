@@ -36,6 +36,7 @@ module ActiveRecord
 
   module Associations
     class Base
+      attr_accessor :finder_sql, :conditions, :loaded, :reflection, :owner, :counter_sql, :target
       def __klass_id
         #"#{self.class}(#{@owner && @owner.__klass_id}, #{@reflection})" #<< instance_variables.inspect
         unless Reflection::AssociationReflection === @reflection
@@ -61,29 +62,19 @@ end
 
 #######################################
 
-=begin
-[
-  nil,
-  true,
-  false,
-  123,
-  1234.123,
-].each do | x |
-  m = Marshal.dump(x)
-  puts "  x = #{x.inspect}\n  => m = #{m.inspect}"
-  MarshalParse.new(m).parse_top_level!
-end
-exit 0
-=end
-
 class MemcacheAnalysis
   class Item
-    include MarshalStats::Initialization
+    include MarshalStats::Initialization, Comparable
+    def <=> b
+      self.size <=> b.size
+    end
     attr_accessor :filename, :line, :lineno, :i
     attr_accessor :key, :x, :y, :size
     attr_accessor :pos, :pos_data, :pos_end
     attr_accessor :error
     attr_accessor :s
+
+    attr_accessor :root_object, :objects, :classes, :modules
 
     def data
       data = File.open(@filename) do | f |
@@ -93,27 +84,33 @@ class MemcacheAnalysis
       data
     end
 
+    def root_object; analysis unless @root_object; @root_object; end
+    def objects;     analysis unless @objects; @objects; end
+    def classes;     analysis unless @classes; @classes; end
+    def modules;     analysis unless @modules; @modules; end
+
     def analyze!
-      self.s = cs = MarshalStats::Stats.new
+      self.s = MarshalStats::Stats.new
       begin
         ms = MarshalStats.new(data)
-        # ch.chain = @cs
-        ms.ch = cs
-        ms.parse_top_level!
+        ms.name = key
+        ms.stats = s
+        ms.parse_top_level! self
       rescue Interrupt, SystemExit
         raise
       rescue Exception => exc
         self.error = [ exc.class.name, exc.inspect, exc.backtrace ]
       end
-      if error &&  (ENV['PRY_ON_ERROR'] || 0).to_i > 0
+      if error && (ENV['PRY_ON_ERROR'] || 0).to_i > 0
         binding.pry
       end
       ms
     end
 
-    def to_s
+    alias :inspect :to_s
+    def desc
       o = StringIO.new
-      o.puts "# #{super}"
+      o.puts "# #{inspect}"
       o.puts "#{key}:"
       o.puts "  :lineno: #{lineno}"
       o.puts "  :size: #{size}"
@@ -124,17 +121,18 @@ class MemcacheAnalysis
       o.puts "  :stats:"
       s.put o
       o.puts "  :error: #{error.inspect}"
-      o.str
+      o.string
     end
 
     def analysis o = nil
       ms = analyze!
       o ||= $stdout
-      o.puts to_s
-      ms.state.unique_string.to_a.sort_by{|a| - a[1]}.each do | s, v |
-        o.puts "  # #{v} #{s.inspect}"
-      end
+      o.puts desc
+      # ms.state.unique_string.to_a.sort_by{|a| - a[1]}.each do | s, v |
+      #   o.puts "  # #{v} #{s.inspect}"
+      # end
       o.puts "\n"
+      nil
     end
 
     def s
@@ -143,9 +141,7 @@ class MemcacheAnalysis
       end
       @s
     end
-
-    nil
-  end
+  end # class Item
 
   attr_accessor :s
 
@@ -237,6 +233,7 @@ class MemcacheAnalysis
         end
       end
       @in = nil
+      @items.sort!
       $stderr.puts "\nparsing #{file}: DONE"
       begin
         $stderr.puts "dumping #{file_dump}"
@@ -261,6 +258,7 @@ class MemcacheAnalysis
 
   def run!
     obj = parse!(ARGV.first || "memcache-contents.txt")
+    @items.sort!
     obj.h
     obj.shell! if $stdout.isatty
   end
