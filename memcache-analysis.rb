@@ -274,10 +274,12 @@ class MemcacheAnalysis
   end
 
   def run!
-    obj = parse!(ARGV.first || "memcache-contents.txt")
+    file = ARGV.first or raise "No file specified"
+    obj = parse!(file)
     @items.sort!
     obj.h
     obj.shell! if $stdout.isatty
+    obj
   end
 
   def ocg x
