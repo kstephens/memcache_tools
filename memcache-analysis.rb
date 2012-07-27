@@ -77,112 +77,229 @@ exit 0
 =end
 
 class MemcacheAnalysis
-  attr_accessor :h, :ch
+  class Item
+    include MarshalStats::Initialization
+    attr_accessor :filename, :line, :lineno, :i
+    attr_accessor :key, :x, :y, :size
+    attr_accessor :pos, :pos_data, :pos_end
+    attr_accessor :error
+    attr_accessor :s
+
+    def data
+      data = File.open(@filename) do | f |
+        f.seek(pos_data)
+        f.read(size)
+      end
+      data
+    end
+
+    def analyze!
+      self.s = cs = MarshalStats::Stats.new
+      begin
+        ms = MarshalStats.new(data)
+        # ch.chain = @cs
+        ms.ch = cs
+        ms.parse_top_level!
+      rescue Interrupt, SystemExit
+        raise
+      rescue Exception => exc
+        self.error = [ exc.class.name, exc.inspect, exc.backtrace ]
+      end
+      if error &&  (ENV['PRY_ON_ERROR'] || 0).to_i > 0
+        binding.pry
+      end
+      ms
+    end
+
+    def to_s
+      o = StringIO.new
+      o.puts "# #{super}"
+      o.puts "#{key}:"
+      o.puts "  :lineno: #{lineno}"
+      o.puts "  :size: #{size}"
+      o.puts "  :x:    #{x}"
+      o.puts "  :y:    #{y}"
+      # o.puts "  :atime: #{atime.iso8601}"
+      o.puts "  :pos:  #{pos}"
+      o.puts "  :stats:"
+      s.put o
+      o.puts "  :error: #{error.inspect}"
+      o.str
+    end
+
+    def analysis o = nil
+      ms = analyze!
+      o ||= $stdout
+      o.puts to_s
+      ms.state.unique_string.to_a.sort_by{|a| - a[1]}.each do | s, v |
+        o.puts "  # #{v} #{s.inspect}"
+      end
+      o.puts "\n"
+    end
+
+    def s
+      unless @s
+        analysis
+      end
+      @s
+    end
+
+    nil
+  end
+
+  attr_accessor :s
 
   ADD = 'add'.freeze
 
   def parse_cmd
     l = readline
+    item = Item.new(:pos => @in.pos, :filename => @filename, :line => l, :lineno => @lineno)
     cmd, *args = l.split(/\s+/)
     case cmd
     when ADD
       key, x, y, size = args
-      x = x.to_i
-      y = y.to_i
+      x = x.to_i # What is this number?
+      y = y.to_i # What is this number?
       # atime = Time.at(x).utc
       size = size.to_i
 
+      if @count % 100 == 0
+        $stderr.write "\n#{@count}: "
+      end
       $stderr.write "#{size}."
 
+      item.i = @items.size
+      item.key = key.freeze
+      item.size = size
+      item.x = x
+      item.y = y
+
+      @items << item
+      @item_by_key[key] = item
+      @s.add! :item_size, size
+
+      item.pos_data = @in.pos
       data = read(size)
       readline
+      item.pos_end = @in.pos
 
       @count += 1
-
-      return unless size > 80000
- 
-      cmd = {
-        :key => key,
-        :size => size,
-        :x => x,
-        :y => y,
-        #:atime => atime,
-      }
-
-      h.add! :item_size, size
-
-      ch = MarshalStats::Stats.new
-      begin
-        ms = MarshalStats.new(data)
-        # ch.chain = @ch
-        ms.ch = ch
-        ms.parse_top_level!
-      rescue Interrupt, SystemExit
-        raise
-      rescue Exception => exc
-        cmd[:error] = [ exc.class.name, exc.inspect, exc.backtrace ]
-      end
-
-      begin
-        o = $stdout
-        o.puts "#{cmd[:key]}:"
-        o.puts "  :size: #{cmd[:size]}"
-        o.puts "  :x:    #{cmd[:x]}"
-        o.puts "  :y:    #{cmd[:y]}"
-        # o.puts "  :atime: #{cmd[:atime].iso8601}"
-        o.puts "  :stats:"
-        ch.put o
-        o.puts "  :error: #{cmd[:error].inspect}"
-        ms.state.unique_string.to_a.sort_by{|a| - a[1]}.each do | s, v |
-          o.puts "  # #{v} #{s.inspect}"
-        end
-        o.puts "\n"
-      end
-
-      if @pry_on_error and cmd[:error]
-        binding.pry
-      end
-      if @count % 100 == 0
-        # binding.pry
-      end
     else
       $stderr.puts "   Unexpected cmd: #{l.inspect}"
     end
+    item
   end
 
   def readline
-    @lines += 1
+    @lineno += 1
     @in.readline
   end
 
   def read size
-    @in.read size
+    if str = @in.read(size)
+      @lineno += str.count("\n")
+    end
+    str
+  end
+
+  attr_accessor :items
+  def item key
+    @item_by_key[key]
+  end
+  def keys
+    @items.map{|i| i.key}
   end
 
   def initialize
-    @lines = 0
+    @lineno = 0
     @count = 0
-    @h = MarshalStats::Stats.new
-    @ch = MarshalStats::Stats.new
+    @s = MarshalStats::Stats.new
     @pry_on_error = (ENV['PRY_ON_ERROR'] || 0).to_i > 0
+    @items = [ ]
+    @item_by_key = { }
   end
 
   def parse! file
-    File.open(file) do | i |
-      @in = i
-      until i.eof?
-        parse_cmd
+    obj = self
+    file_dump = "#{file}.marshal"
+    if File.exist?(file_dump) && File.size(file_dump) > 100
+      $stderr.puts "loading #{file_dump}"
+      obj = Marshal.load(File.read(file_dump))
+      $stderr.puts "loading #{file_dump} : DONE"
+    else
+      obj = self
+      $stderr.puts "parsing #{file}"
+      File.open(file) do | i |
+        @filename = file.freeze
+        @in = i
+        until i.eof?
+          parse_cmd
+        end
+      end
+      @in = nil
+      $stderr.puts "\nparsing #{file}: DONE"
+      begin
+        $stderr.puts "dumping #{file_dump}"
+        File.open(file_dump, "w+") do | o |
+          o.write Marshal.dump(self)
+        end
+        $stderr.puts "dumping #{file_dump} : DONE"
+      rescue ::Exception => exc
+        $stderr.puts "  ERROR: #{exc.inspect}\n  #{exc.backtrace * "\n  "}"
+        File.unlink(file_dump) rescue nil
       end
     end
-    binding.pry
-    self
+    obj
+  end
+
+  def h b = nil
+    b ||= @s[:item_size]
+    puts "\n= #{b.count} ======================"
+    puts b.histogram(:width => 50, :height => 40) * "\n"
+    nil
   end
 
   def run!
-    parse!(ARGV.first || "memcache-contents.txt")
+    obj = parse!(ARGV.first || "memcache-contents.txt")
+    obj.h
+    obj.shell! if $stdout.isatty
+  end
+
+  def shell!
+    IRB.start_session(binding)
+    self
   end
 
 end
+
+#####################
+
+require 'irb'
+
+module IRB # :nodoc:
+  def self.start_session(binding)
+    unless @__initialized
+      args = ARGV
+      ARGV.replace(ARGV.dup)
+      IRB.setup(nil)
+      ARGV.replace(args)
+      @__initialized = true
+    end
+
+    workspace = WorkSpace.new(binding)
+
+    irb = Irb.new(workspace)
+
+    @CONF[:IRB_RC].call(irb.context) if @CONF[:IRB_RC]
+    @CONF[:MAIN_CONTEXT] = irb.context
+
+    catch(:IRB_EXIT) do
+      irb.eval_input
+    end
+  end
+end
+
+#####################
 
 MemcacheAnalysis.new.run!
 

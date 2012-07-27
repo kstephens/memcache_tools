@@ -4,30 +4,44 @@ require 'terminal-table'
 
 class MarshalStats
 class Stats
+  include Initialization
+
   attr_accessor :chain
   attr_accessor :verbose
 
-  def initialize
-    @s = Hash.new do | h, k |
-      b = Bucket.new
-      b.values = [ ]
-      h[k] = b
-    end
+  def inspect
+    to_s
   end
 
-  def count! stat, value = 1
-    $stderr.puts "  count! #{stat.inspect} #{value.inspect}" if @verbose
-    c = @s[stat]
-    c.count! value
-    @chain.count! stat, value if @chain
+  def initialize
+    super
+    @s = { }
+  end
+
+  def stat stat
+    @s[stat] ||= Bucket.new(:name => stat, :values => [ ])
+  end
+  alias :[] :stat
+  def keys
+    @s.keys.sort_by{|s| s.to_s}
+  end
+  def method_missing sel, *args
+    super unless args.empty? and ! block_given? and @s[sel]
+  end
+
+  def count! k, v = 1
+    $stderr.puts "  count! #{k.inspect} #{v.inspect}" if @verbose
+    b = stat(k)
+    b.count! v
+    @chain.count! k, v if @chain
     self
   end
 
-  def add! stat, value
-    $stderr.puts "  add! #{stat.inspect} #{value.inspect}" if @verbose
-    b = @s[stat]
-    b.add! value
-    @chain.add! stat, value if @chain
+  def add! k, v
+    $stderr.puts "  add! #{k.inspect} #{v.inspect}" if @verbose
+    b = stat(k)
+    b.add! v
+    @chain.add! k, v if @chain
     self
   end
 
@@ -42,7 +56,7 @@ class Stats
       end
       histogram = nil
       if values = c.values and ! values.empty?
-        histogram = c.histogram
+        histogram = c.histogram(:width => 30, :height => 15)
         histogram = nil if histogram.empty?
       end
       o.puts "    #{k.to_sym.inspect}:"
@@ -59,7 +73,18 @@ class Stats
     self
   end
 
+  def h
+    o
+    nil
+  end
+
   class Bucket
+    include Initialization
+
+    def inspect
+      to_s
+    end
+
     KEYS =
     [
       :count,
@@ -72,9 +97,10 @@ class Stats
     ]
 
     attr_accessor *KEYS
-    attr_accessor :values
+    attr_accessor :name, :values
 
-    def initialize
+    def initialize *args
+      super
       @count = 0
     end
 
@@ -132,23 +158,41 @@ class Stats
       self
     end
 
-    def histogram
-      @histogram ||=
-        Histogram.new(values).generate
+    def histogram *opts
+      Histogram.new(*opts, :values => finish!.values).generate
+    end
+
+    def h opts = nil
+      h = histogram(opts)
+      $stdout.puts "# #{self.class} #{@name}"
+      $stdout.puts h * "\n"
+      nil
+    end
+
+    def to_s opts = nil
+      h({:width => 50, :height => 40}.update(opts || {}))
+    end
+
+    def inspect
+      to_s
     end
   end
 
   class Graph < Bucket
-    attr_accessor :width
+    include Initialization
+    attr_accessor :values, :width
+    attr_accessor :values_are_integers
 
-    def initialize values = nil, width = nil
-      super()
-      @width = width || 20
-      @values = [ ]
-      if values
+    def initialize *args
+      super
+      @force_min, @force_max = @min, @max
+      if @values
+        values = @values
+        @values = [ ]
         values.each { | v | add! v }
         finish!
       end
+      @width ||= 20
     end
 
     def fix_width!
@@ -161,6 +205,8 @@ class Stats
     def finish!
       super
       return nil if empty?
+      @min = @force_min if @force_min
+      @max = @force_max if @force_max
       @max_min = @max - @min
       @values_are_integers = @values.all?{|e| Integer === e}
       if @values_are_integers
@@ -171,6 +217,15 @@ class Stats
         end
       end
       self
+    end
+
+    def sum!
+      finish! unless @sum
+      @sum
+    end
+
+    def percent value
+      '%5.1f%%' % (value * 100 / sum!.to_f)
     end
 
     def bar value
@@ -195,20 +250,24 @@ class Stats
   end
 
   class Histogram
+    include Initialization
+
     attr_accessor :values
     attr_accessor :min, :max
     attr_accessor :width, :height, :show_sum
 
-    def initialize values = nil
-      @values = values
-      @width = 15
-      @height = 20
+    def initialize *args
+      @min = @max = nil
+      @show_sum = true
+      super
+      @width ||= 15
+      @height ||= 20
     end
 
     def generate
       raise TypeError, "@values not set" unless @values
       return [ ] if @values.size < 2
-      @x_graph = Graph.new(@values, @width)
+      @x_graph = Graph.new(:min => @min, :max => @max, :values => @values, :width => @width)
       return [ ] if @x_graph.empty?
       @x_graph.fix_width!
 
@@ -222,14 +281,14 @@ class Stats
 
       cnt = @buckets.values.map { |b| b.count }
       cnt << 0
-      @cnt_graph = Graph.new(cnt, @height)
+      @cnt_graph = Graph.new(:values => cnt, :width => @height)
       return [ ] if @cnt_graph.empty?
       # @cnt_graph.fix_width!
 
       if @show_sum
       sum = @buckets.values.map { |b| b.sum }
       sum << 0
-      @sum_graph = Graph.new(sum, @height)
+      @sum_graph = Graph.new(:values => sum, :width => @height)
       # @sum_graph.fix_width!
       end
 
@@ -320,3 +379,4 @@ end
 
 end
 
+2
