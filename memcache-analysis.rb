@@ -9,6 +9,8 @@ $:.unshift(File.expand_path('lib'))
 require 'marshal_stats'
 require 'object_class_graph'
 
+require 'zlib'
+
 #######################################
 
 module TrickSerial
@@ -163,7 +165,7 @@ class MemcacheAnalysis
       size = size.to_i
 
       if @count % 100 == 0
-        $stderr.write "\n#{@count}: "
+        $stderr.write "\n # #{@count}: "
       end
       $stderr.write "#{size}."
 
@@ -181,6 +183,18 @@ class MemcacheAnalysis
       data = read(size)
       readline
       item.pos_end = @in.pos
+
+      (1..9).each do | level |
+        GC.disable
+        t0 = Time.now.to_f
+        zlib_data = Zlib::Deflate.deflate(data, level)
+        Zlib::Inflate.inflate(zlib_data)
+        zlib_time = Time.now.to_f - t0
+        GC.enable
+        zlib_size = zlib_data.size
+        @s.add! :"item_time_zlib_#{level}", zlib_time
+        @s.add! :"item_size_zlib_#{level}", zlib_size
+      end
 
       @count += 1
     else
