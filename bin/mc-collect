@@ -1,0 +1,19 @@
+#!/bin/bash
+PATH="$(dirname $0):$PATH"
+cmds="display stats"
+if [ "$1" = '-d' ]
+then
+  shift
+  cmds="$cmds dump"
+fi
+set -x
+for ip_port in "$@"
+do
+time="$(date -u +%Y%m%d%H%M%SZ)"
+for cmd in $cmds
+do
+  mkdir -p "$ip_port/$time"
+  memcached-tool "$ip_port" $cmd > "$ip_port/$time/$cmd.txt"
+done
+done
+

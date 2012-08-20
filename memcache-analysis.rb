@@ -177,6 +177,7 @@ class MemcacheAnalysis
 
       @items << item
       @item_by_key[key] = item
+      @s.add! :key_size, key.size
       @s.add! :item_size, size
 
       item.pos_data = @in.pos
