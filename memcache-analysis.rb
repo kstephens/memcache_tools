@@ -278,9 +278,12 @@ class MemcacheAnalysis
   end
 
   def h b = nil
-    b ||= @s[:item_size]
-    puts "\n= #{b.count} ======================"
-    puts b.histogram(:width => 50, :height => 40) * "\n"
+    if b ||= @s[:item_size]
+      puts "\n= #{b.count} ======================"
+      puts b.histogram(:width => 50, :height => 40) * "\n"
+    else
+      puts "  NO DATA "
+    end
     nil
   end
 
