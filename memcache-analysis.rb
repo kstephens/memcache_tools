@@ -5,6 +5,7 @@ gem 'pry'
 require 'pry'
 
 require 'time'
+$:.unshift(File.expand_path('../../dumbstats/lib', __FILE__))
 $:.unshift(File.expand_path('lib'))
 require 'marshal_stats'
 require 'object_class_graph'
@@ -124,7 +125,7 @@ class MemcacheAnalysis
       # o.puts "  :atime: #{atime.iso8601}"
       o.puts "  :pos:  #{pos}"
       o.puts "  :stats:"
-      s.put o
+      s.put :output => o
       o.puts "  :error: #{error.inspect}"
       o.string
     end
@@ -233,8 +234,10 @@ class MemcacheAnalysis
     @item_by_key = { }
   end
 
+  attr_accessor :file
   def parse! file
     obj = self
+    @file = file
     file_dump = "#{file}.marshal"
     if File.exist?(file_dump) && File.size(file_dump) > 100
       $stderr.puts "loading #{file_dump}"
@@ -277,7 +280,9 @@ class MemcacheAnalysis
   def run!
     file = ARGV.first or raise "No file specified"
     obj = parse!(file)
-    @items.sort!
+    obj.file = file
+    obj.items.each { | i | i.filename = file }
+    obj.items.sort!
     obj.h
     obj.shell! if $stdout.isatty
     obj
