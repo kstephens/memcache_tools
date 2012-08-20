@@ -1,11 +1,13 @@
 #!/usr/bin/env ruby
 
+raise "Does not work on ruby 1.8" if RUBY_VERSION =~ /^1\.8/
+
 require 'rubygems'
 gem 'pry'
 require 'pry'
 
 require 'time'
-$:.unshift(File.expand_path('../../dumbstats/lib', __FILE__))
+$:.unshift(File.expand_path('../../../dumbstats/lib', __FILE__))
 $:.unshift(File.expand_path('lib'))
 require 'marshal_stats'
 require 'object_class_graph'
