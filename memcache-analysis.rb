@@ -64,6 +64,13 @@ module ActiveRecord
   end
 end
 
+module ActionController
+  module Flash
+    class FlashHash < Hash
+    end
+  end
+end
+
 #######################################
 
 class MemcacheAnalysis
